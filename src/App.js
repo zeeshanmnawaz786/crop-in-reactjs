@@ -1,88 +1,88 @@
-import React, { useRef, useState } from 'react';
-import { Stage, Layer, Image, Rect, Transformer } from 'react-konva';
+import React from "react";
+import "./App.css";
 
-const ImageCrop = () => {
-  const imageRef = useRef();
-  const trRef = useRef();
-  const [cropRect, setCropRect] = useState(null);
+import Cropper from "react-easy-crop";
 
-  const handleCrop = () => {
-    if (!cropRect) return;
+import { generateDownload } from "./utils/cropImage";
 
-    // Create a canvas element
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
+export default function App() {
+  const inputRef = React.useRef();
 
-    // Set the canvas size to the crop rectangle size
-    canvas.width = cropRect.width();
-    canvas.height = cropRect.height();
+  const triggerFileSelectPopup = () => inputRef.current.click();
 
-    // Draw the cropped image onto the canvas
-    context.drawImage(
-      imageRef.current.image(),
-      cropRect.x(),
-      cropRect.y(),
-      cropRect.width(),
-      cropRect.height(),
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
+  const [image, setImage] = React.useState(null);
+  const [croppedArea, setCroppedArea] = React.useState(null);
+  const [crop, setCrop] = React.useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = React.useState(1);
 
-    // Get the cropped image data URL
-    const croppedImageDataURL = canvas.toDataURL();
+  const onCropComplete = (croppedAreaPercentage, croppedAreaPixels) => {
+    setCroppedArea(croppedAreaPixels);
+  };
 
-    // Use the cropped image data URL as needed
-    console.log(croppedImageDataURL);
+  const onSelectFile = (event) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const reader = new FileReader();
+      reader.readAsDataURL(event.target.files[0]);
+      reader.addEventListener("load", () => {
+        setImage(reader.result);
+      });
+    }
+  };
+
+  const onDownload = () => {
+    generateDownload(image, croppedArea);
   };
 
   return (
-    <div>
-      <Stage width={window.innerWidth} height={window.innerHeight}>
-        <Layer>
-          <Image
-            image={imageRef.current}
-            draggable
-            onDragEnd={(e) => {
-              setCropRect(null);
-              e.target.to({
-                duration: 0.5,
-                easing: 'ease-in-out',
-                scaleX: 1,
-                scaleY: 1
-              });
-            }}
-          />
-          <Rect
-            ref={trRef}
-            visible={!!cropRect}
-            {...cropRect}
-            draggable
-            onTransformEnd={() => {
-              const node = trRef.current;
-              const scaleX = node.scaleX();
-              const scaleY = node.scaleY();
+    <div className="container">
+      <div className="container-cropper">
+        {image ? (
+          <>
+            <div className="cropper">
+              <Cropper
+                image={image}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
 
-              // Update the crop rectangle size and position
-              setCropRect({
-                ...cropRect,
-                x: node.x(),
-                y: node.y(),
-                width: node.width() * scaleX,
-                height: node.height() * scaleY
-              });
+            {/* <div className="slider">
+              <Slider
+                min={1}
+                max={3}
+                step={0.1}
+                value={zoom}
+                onChange={(e, zoom) => setZoom(zoom)}
+              />
+            </div> */}
+          </>
+        ) : null}
+      </div>
 
-              // Reset the scale
-              node.scaleX(1);
-              node.scaleY(1);
-            }}
-          />
-        </Layer>
-      </Stage>
-      <button onClick={handleCrop}>Crop Image</button>
+      <div className="container-buttons">
+        <input
+          type="file"
+          accept="image/*"
+          ref={inputRef}
+          onChange={onSelectFile}
+          style={{ display: "none" }}
+        />
+        <button
+          variant="contained"
+          color="primary"
+          onClick={triggerFileSelectPopup}
+          style={{ marginRight: "10px" }}
+        >
+          Choose
+        </button>
+        <button variant="contained" color="secondary" onClick={onDownload}>
+          Download
+        </button>
+      </div>
     </div>
   );
-};
-
-export default ImageCrop;
+}
